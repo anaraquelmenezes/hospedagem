@@ -856,13 +856,40 @@ function saveReserva(){
   var statusPag=pagoEntrada>0?(pagoEntrada>=valorTotal?'Pago':'Parcial'):'Pendente';
   var body={id:id,clienteId:cs.value,clienteNome:cs.options[cs.selectedIndex]?cs.options[cs.selectedIndex].text:'',quartoId:qs.value,quartoNome:qs.options[qs.selectedIndex]?qs.options[qs.selectedIndex].text.split(' —')[0]:'',dataEntrada:document.getElementById('reservaEntrada').value,dataSaida:document.getElementById('reservaSaida').value,numHospedes:document.getElementById('reservaNumHospedes').value,valorTotal:valorTotal,pagoEntrada:pagoEntrada,statusPagamento:statusPag,observacoes:document.getElementById('reservaObs').value,acompanhantes:getAcompanhantesForm()};
   if(!body.clienteId||!body.quartoId||!body.dataEntrada||!body.dataSaida){toast('Preencha todos os campos obrigatórios','error');return;}
+  // Verificar conflito de datas para o mesmo quarto
+  var conflito=state.reservas.filter(function(r){
+    if(r.StatusReserva==='Cancelada'||r.StatusReserva==='Finalizada')return false;
+    if(id&&r.ID===id)return false; // ignorar a própria reserva ao editar
+    if(r.QuartoID!==body.quartoId)return false;
+    var e1=body.dataEntrada,s1=body.dataSaida;
+    var e2=r.DataEntrada&&r.DataEntrada.split('T')[0];
+    var s2=r.DataSaida&&r.DataSaida.split('T')[0];
+    if(!e2||!s2)return false;
+    return e1<s2&&s1>e2; // sobreposição
+  });
+  if(conflito.length>0){
+    var c=conflito[0];
+    toast('⚠️ Conflito de datas! '+c.ClienteNome+' já tem reserva neste quarto de '+fmtDate(c.DataEntrada)+' a '+fmtDate(c.DataSaida),'error');
+    return;
+  }
   var action=id?'updateReserva':'addReserva';
   api(action,body).then(function(r){if(r.success){toast(id?'Reserva atualizada!':'Reserva confirmada! Entrada (50%) registrada.');closeModal('modalReserva');loadAll();}else{toast(r.error,'error');}});
 }
 
 function deleteReserva(id){
-  if(!confirm('Deletar esta reserva permanentemente? Esta ação não pode ser desfeita.'))return;
-  api('deleteReserva',{id:id}).then(function(r){if(r.success){toast('Reserva deletada!');loadAll();}else{toast(r.error,'error');}});
+  var r=state.reservas.filter(function(x){return x.ID===id;})[0];
+  var info=r?(' de '+r.ClienteNome+' — '+r.QuartoNome):'';
+  if(!confirm('Deletar permanentemente a reserva'+info+'?\n\nEsta ação não pode ser desfeita e o registro será removido do calendário.'))return;
+  api('deleteReserva',{id:id}).then(function(r){
+    if(r.success){
+      // Remove imediatamente do state local para calendário atualizar na hora
+      state.reservas=state.reservas.filter(function(x){return x.ID!==id;});
+      renderCalendar();
+      renderReservas();
+      renderDashboard();
+      toast('Reserva deletada!');
+    }else{toast(r.error,'error');}
+  });
 }
 function cancelReserva(id){
   if(!confirm('Cancelar esta reserva?'))return;
