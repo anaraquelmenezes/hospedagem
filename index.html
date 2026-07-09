@@ -932,7 +932,7 @@ function confirmCheckout(){
         // Fechar modal principal e abrir modal de NPS
         closeModal('modalCheckout');
         var cli=state.clientes.filter(function(c){return c.ID===clienteId;})[0];
-        var telefone=cli?(cli.Telefone||'').replace(/\D/g,''):'';
+        var telefone=cli?String(cli.Telefone||'').replace(/\D/g,''):'';
         var msg='Ol\u00e1, '+nomeHospede+'! \ud83d\ude0a\n\nFoi um prazer receber voc\u00ea na *Pousada Nossa Senhora Menina e S\u00e3o Jos\u00e9 Vitorioso*!\n\nSua opini\u00e3o \u00e9 muito importante para n\u00f3s. Poderia dedicar 1 minutinho para responder?\n\n\ud83d\udccb *Pesquisa de satisfa\u00e7\u00e3o:*\n\ud83d\udc49 https://docs.google.com/forms/d/e/1FAIpQLScoTrUqtuspylG9xfz8o7P2GE3yEndQ_5y5rix2g3JYIGEcSw/viewform\n\n\u2b50 *Avalia\u00e7\u00e3o no Google:*\n\ud83d\udc49 https://g.page/r/CQ3TCStmTU5TEAE/review\n\nEsperamos v\u00ea-lo novamente em breve! \ud83d\ude4f';
         var waUrl=telefone?'https://wa.me/55'+telefone+'?text='+encodeURIComponent(msg):'https://wa.me/?text='+encodeURIComponent(msg);
         document.getElementById('npsNome').textContent=nomeHospede;
