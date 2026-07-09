@@ -394,7 +394,7 @@ select.form-control { appearance: none; cursor: pointer; }
         <div class="form-group"><label class="form-label">Check-out</label><input type="date" class="form-control" id="reservaSaida" onchange="calcValor()"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Nº total de hóspedes</label><input type="number" class="form-control" id="reservaNumHospedes" placeholder="2" min="1"></div>
+        <div class="form-group"><label class="form-label">Nº total de hóspedes</label><input type="number" class="form-control" id="reservaNumHospedes" placeholder="2" min="1" oninput="calcValor()"></div>
         <div class="form-group"><label class="form-label">Valor total (R$)</label><input type="number" class="form-control" id="reservaValor" placeholder="0.00" step="0.01"></div>
       </div>
       <div id="reservaResumo" style="display:none;background:var(--green-light);border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px;color:var(--green);"><strong>Resumo:</strong> <span id="reservaResumoTexto"></span></div>
@@ -601,9 +601,11 @@ function calcValor() {
   if(!entrada||!saida||!opt||!opt.dataset.valor){document.getElementById('reservaResumo').style.display='none';return;}
   var dias=Math.round((new Date(saida)-new Date(entrada))/(1000*60*60*24));
   if(dias<=0)return;
-  var valor=dias*parseFloat(opt.dataset.valor);
+  var valorDiaria=parseFloat(opt.dataset.valor);
+  var numHospedes=parseInt(document.getElementById('reservaNumHospedes').value)||1;
+  var valor=dias*valorDiaria*numHospedes;
   document.getElementById('reservaValor').value=valor.toFixed(2);
-  document.getElementById('reservaResumoTexto').textContent=dias+' diária(s) × '+fmt(opt.dataset.valor)+' = '+fmt(valor)+' | Entrada: '+fmt(valor*0.5)+' | Restante na saída: '+fmt(valor*0.5);
+  document.getElementById('reservaResumoTexto').textContent=dias+' diária(s) × '+fmt(valorDiaria)+' × '+numHospedes+' pessoa(s) = '+fmt(valor)+' | Entrada: '+fmt(valor*0.5)+' | Restante na saída: '+fmt(valor*0.5);
   document.getElementById('reservaResumo').style.display='block';
 }
 
