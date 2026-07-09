@@ -443,16 +443,9 @@ select.form-control { appearance: none; cursor: pointer; }
     <div class="modal-body">
       <div id="checkoutInfo" style="background:var(--amber-light);border-radius:8px;padding:16px;margin-bottom:16px;font-size:13px;"></div>
       <p style="font-size:13px;color:var(--text2);">Ao confirmar o check-out, o saldo restante (50%) será registrado e o quarto ficará disponível.</p>
-      <div id="checkoutWaBtn" style="display:none;margin-top:16px;text-align:center;">
-        <p style="font-size:13px;color:var(--green);font-weight:500;margin-bottom:10px;">✅ Check-out realizado! Envie a avaliação para o hóspede:</p>
-        <a id="checkoutWaLink" href="#" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:#25D366;color:#fff;padding:12px 24px;border-radius:8px;font-weight:500;font-size:14px;text-decoration:none;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.135.562 4.14 1.541 5.876L.057 23.886a.5.5 0 0 0 .611.61l6.178-1.457A11.943 11.943 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.891 0-3.66-.52-5.17-1.425l-.36-.214-3.733.881.916-3.648-.235-.374A9.96 9.96 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
-          Enviar avaliação pelo WhatsApp
-        </a>
-        <button class="btn btn-secondary" style="margin-top:10px;display:block;width:100%;" onclick="closeModal('modalCheckout')">Fechar</button>
-      </div>
+
     </div>
-    <div class="modal-footer" id="checkoutFooter">
+    <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modalCheckout')">Cancelar</button>
       <button class="btn btn-primary" onclick="confirmCheckout()">Confirmar check-out</button>
     </div>
@@ -569,13 +562,7 @@ function initIfNeeded() {
   api('initSheets').then(function(){loadAll();}).catch(function(){toast('Erro de conexão com a API','error');});
 }
 
-function closeModal(id){
-  document.getElementById(id).classList.remove('open');
-  if(id==='modalCheckout'){
-    document.getElementById('checkoutWaBtn').style.display='none';
-    document.getElementById('checkoutFooter').style.display='flex';
-  }
-}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
 
 function openModal(type,data) {
   data=data||null;
@@ -934,18 +921,36 @@ function confirmCheckout(){
   if(!r)return;
   var restante=parseFloat(r.ValorTotal||0)-parseFloat(r.PagoEntrada||0);
   var upd={id:r.ID,clienteId:r.ClienteID,clienteNome:r.ClienteNome,quartoId:r.QuartoID,quartoNome:r.QuartoNome,dataEntrada:r.DataEntrada,dataSaida:r.DataSaida,numHospedes:r.NumHospedes,valorTotal:r.ValorTotal,pagoEntrada:r.PagoEntrada,pagoSaida:restante,statusPagamento:'Pago',statusReserva:'Finalizada',observacoes:r.Observacoes||''};
+  // Guardar dados do hóspede antes do loadAll sobrescrever o state
+  var nomeHospede=r.ClienteNome;
+  var clienteId=r.ClienteID;
   api('updateReserva',upd).then(function(res){
     if(res.success){
-      api('addFinanceiro',{data:new Date().toISOString(),tipo:'Receita',categoria:'Reserva - Saída',descricao:'Saída 50% - '+r.ClienteNome+' / '+r.QuartoNome,valor:restante,reservaId:r.ID}).then(function(){toast('Check-out realizado!');loadAll();
-        // Montar link do WhatsApp e mostrar botão
-        var telefone='';
-        var cli=state.clientes.filter(function(c){return c.ID===r.ClienteID;})[0];
-        if(cli)telefone=(cli.Telefone||'').replace(/\D/g,'');
-        var msg='Olá, '+r.ClienteNome+'! 😊\n\nFoi um prazer receber você na *Pousada Nossa Senhora Menina e São José Vitorioso*!\n\nSua opinião é muito importante para nós. Poderia dedicar 1 minutinho para responder?\n\n📋 *Pesquisa de satisfação:*\n👉 https://docs.google.com/forms/d/e/1FAIpQLScoTrUqtuspylG9xfz8o7P2GE3yEndQ_5y5rix2g3JYIGEcSw/viewform\n\n⭐ *Avaliação no Google:*\n👉 https://g.page/r/CQ3TCStmTU5TEAE/review\n\nEsperamos vê-lo novamente em breve! 🙏';
+      api('addFinanceiro',{data:new Date().toISOString(),tipo:'Receita',categoria:'Reserva - Saída',descricao:'Saída 50% - '+nomeHospede+' / '+r.QuartoNome,valor:restante,reservaId:r.ID}).then(function(){
+        toast('Check-out realizado!');
+        loadAll();
+        // Fechar modal principal e abrir modal de NPS
+        closeModal('modalCheckout');
+        var cli=state.clientes.filter(function(c){return c.ID===clienteId;})[0];
+        var telefone=cli?(cli.Telefone||'').replace(/\D/g,''):'';
+        var msg='Olá, '+nomeHospede+'! 😊
+
+Foi um prazer receber você na *Pousada Nossa Senhora Menina e São José Vitorioso*!
+
+Sua opinião é muito importante para nós. Poderia dedicar 1 minutinho para responder?
+
+📋 *Pesquisa de satisfação:*
+👉 https://docs.google.com/forms/d/e/1FAIpQLScoTrUqtuspylG9xfz8o7P2GE3yEndQ_5y5rix2g3JYIGEcSw/viewform
+
+⭐ *Avaliação no Google:*
+👉 https://g.page/r/CQ3TCStmTU5TEAE/review
+
+Esperamos vê-lo novamente em breve! 🙏';
         var waUrl=telefone?'https://wa.me/55'+telefone+'?text='+encodeURIComponent(msg):'https://wa.me/?text='+encodeURIComponent(msg);
-        document.getElementById('checkoutWaLink').href=waUrl;
-        document.getElementById('checkoutWaBtn').style.display='block';
-        document.getElementById('checkoutFooter').style.display='none';});
+        document.getElementById('npsNome').textContent=nomeHospede;
+        document.getElementById('npsLink').href=waUrl;
+        document.getElementById('modalNPS').classList.add('open');
+      });
     }else{toast(res.error,'error');}
   });
 }
@@ -1035,5 +1040,21 @@ function deleteFinanceiro(id){
 document.getElementById('topbarDate').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
 initIfNeeded();
 </script>
+
+<!-- MODAL NPS WHATSAPP -->
+<div class="modal-overlay" id="modalNPS">
+  <div class="modal" style="max-width:400px;text-align:center;">
+    <div class="modal-header" style="justify-content:center;border:none;padding-bottom:8px;">
+      <h2>&#x2705; Check-out realizado!</h2>
+    </div>
+    <div class="modal-body" style="padding-top:0;">
+      <p style="font-size:14px;color:var(--text2);margin-bottom:20px;">Envie a pesquisa de satisfacao para <strong id="npsNome"></strong>:</p>
+      <a id="npsLink" href="#" style="display:flex;align-items:center;justify-content:center;gap:10px;background:#25D366;color:#fff;padding:14px 24px;border-radius:10px;font-weight:600;font-size:15px;text-decoration:none;margin-bottom:12px;">
+        &#128172; Enviar pelo WhatsApp
+      </a>
+      <button class="btn btn-secondary" style="width:100%;" onclick="closeModal('modalNPS')">Fechar</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
