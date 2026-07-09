@@ -395,7 +395,11 @@ select.form-control { appearance: none; cursor: pointer; }
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Nº total de hóspedes</label><input type="number" class="form-control" id="reservaNumHospedes" placeholder="2" min="1" oninput="calcValor()"></div>
+        <div class="form-group"><label class="form-label">Valor da diária por pessoa (R$)</label><input type="number" class="form-control" id="reservaDiaria" placeholder="150.00" step="0.01" oninput="calcValor()"></div>
+      </div>
+      <div class="form-row">
         <div class="form-group"><label class="form-label">Valor total (R$)</label><input type="number" class="form-control" id="reservaValor" placeholder="0.00" step="0.01"></div>
+        <div class="form-group"><label class="form-label">Valor de entrada (R$) <span style="font-size:10px;color:var(--text3)">padrão 50%</span></label><input type="number" class="form-control" id="reservaEntradaValor" placeholder="0.00" step="0.01"></div>
       </div>
       <div id="reservaResumo" style="display:none;background:var(--green-light);border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px;color:var(--green);"><strong>Resumo:</strong> <span id="reservaResumoTexto"></span></div>
       <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px;">
@@ -587,6 +591,9 @@ function openModal(type,data) {
     document.getElementById('reservaSaida').value=data?(data.DataSaida||'').split('T')[0]:'';
     document.getElementById('reservaNumHospedes').value=data?data.NumHospedes:'';
     document.getElementById('reservaValor').value=data?data.ValorTotal:'';
+    document.getElementById('reservaEntradaValor').value=data?(data.PagoEntrada||''):'';
+    document.getElementById('reservaDiaria').value='150.00';
+    document.getElementById('reservaDiaria').dataset.editado='';
     document.getElementById('reservaObs').value=data?(data.Observacoes||''):'';
     document.getElementById('reservaResumo').style.display='none';
     document.getElementById('modalReservaTitle').textContent=data?'Editar reserva':'Nova reserva';
@@ -617,14 +624,19 @@ function calcValor() {
   var saida=document.getElementById('reservaSaida').value;
   var qs=document.getElementById('reservaQuarto');
   var opt=qs.options[qs.selectedIndex];
-  if(!entrada||!saida||!opt||!opt.dataset.valor){document.getElementById('reservaResumo').style.display='none';return;}
+  // Preencher diária com valor do quarto selecionado (se ainda não foi editado)
+  var diariaCampo=document.getElementById('reservaDiaria');
+  if(opt&&opt.dataset.valor&&!diariaCampo.dataset.editado){diariaCampo.value=parseFloat(opt.dataset.valor).toFixed(2);}
+  if(!entrada||!saida){document.getElementById('reservaResumo').style.display='none';return;}
   var dias=Math.round((new Date(saida)-new Date(entrada))/(1000*60*60*24));
   if(dias<=0)return;
-  var valorDiaria=parseFloat(opt.dataset.valor);
+  var valorDiaria=parseFloat(diariaCampo.value)||0;
   var numHospedes=parseInt(document.getElementById('reservaNumHospedes').value)||1;
   var valor=dias*valorDiaria*numHospedes;
   document.getElementById('reservaValor').value=valor.toFixed(2);
-  document.getElementById('reservaResumoTexto').textContent=dias+' diária(s) × '+fmt(valorDiaria)+' × '+numHospedes+' pessoa(s) = '+fmt(valor)+' | Entrada: '+fmt(valor*0.5)+' | Restante na saída: '+fmt(valor*0.5);
+  var entrada50=valor*0.5;
+  document.getElementById('reservaEntradaValor').value=entrada50.toFixed(2);
+  document.getElementById('reservaResumoTexto').textContent=dias+' diária(s) × '+fmt(valorDiaria)+' × '+numHospedes+' pessoa(s) = '+fmt(valor)+' | Entrada: '+fmt(entrada50)+' | Restante na saída: '+fmt(valor-entrada50);
   document.getElementById('reservaResumo').style.display='block';
 }
 
@@ -810,7 +822,8 @@ function renderReservas(filter){
     acoes+='<button class="btn btn-green btn-sm" onclick=\'editReserva('+JSON.stringify(r)+')\'>Editar</button>';
     if(r.StatusReserva!=='Finalizada'&&r.StatusReserva!=='Cancelada'){acoes+='<button class="btn btn-amber btn-sm" onclick="openCheckout(\''+r.ID+'\')">Check-out</button>';}
     if(nacomp>0){acoes+='<button class="btn btn-blue btn-sm" onclick="verAcompanhantes(\''+r.ID+'\')">'+nacomp+' acomp.</button>';}
-    acoes+='<button class="btn btn-danger btn-sm" onclick="cancelReserva(\''+r.ID+'\')">Cancelar</button></div>';
+    acoes+='<button class="btn btn-danger btn-sm" onclick="cancelReserva(\''+r.ID+'\')">Cancelar</button>';
+    acoes+='<button class="btn btn-sm" style="background:#5a1a1a;color:#fff;border:none;" onclick="deleteReserva(\''+r.ID+'\')">Deletar</button></div>';
     return '<tr><td><strong>'+(r.ClienteNome||'—')+'</strong></td><td>'+(r.QuartoNome||'—')+'</td><td>'+fmtDate(r.DataEntrada)+'</td><td>'+fmtDate(r.DataSaida)+'</td><td>'+(r.NumHospedes||1)+'</td><td>'+fmt(r.ValorTotal)+'</td><td>'+fmt(r.PagoEntrada||0)+'</td><td>'+fmt(r.PagoSaida||0)+'</td><td>'+badgePagamento(r.StatusPagamento)+'</td><td>'+badgeReserva(r.StatusReserva)+'</td><td>'+acoes+'</td></tr>';
   }).join('');
   el.innerHTML='<table><thead><tr><th>Hóspede</th><th>Quarto</th><th>Entrada</th><th>Saída</th><th>Hóspedes</th><th>Valor Total</th><th>Pago Entrada</th><th>Pago Saída</th><th>Pagamento</th><th>Status</th><th>Ações</th></tr></thead><tbody>'+rows+'</tbody></table>';
@@ -838,12 +851,19 @@ function saveReserva(){
   var id=document.getElementById('reservaId').value;
   var cs=document.getElementById('reservaCliente');
   var qs=document.getElementById('reservaQuarto');
-  var body={id:id,clienteId:cs.value,clienteNome:cs.options[cs.selectedIndex]?cs.options[cs.selectedIndex].text:'',quartoId:qs.value,quartoNome:qs.options[qs.selectedIndex]?qs.options[qs.selectedIndex].text.split(' —')[0]:'',dataEntrada:document.getElementById('reservaEntrada').value,dataSaida:document.getElementById('reservaSaida').value,numHospedes:document.getElementById('reservaNumHospedes').value,valorTotal:document.getElementById('reservaValor').value,observacoes:document.getElementById('reservaObs').value,acompanhantes:getAcompanhantesForm()};
+  var valorTotal=parseFloat(document.getElementById('reservaValor').value)||0;
+  var pagoEntrada=parseFloat(document.getElementById('reservaEntradaValor').value)||valorTotal*0.5;
+  var statusPag=pagoEntrada>0?(pagoEntrada>=valorTotal?'Pago':'Parcial'):'Pendente';
+  var body={id:id,clienteId:cs.value,clienteNome:cs.options[cs.selectedIndex]?cs.options[cs.selectedIndex].text:'',quartoId:qs.value,quartoNome:qs.options[qs.selectedIndex]?qs.options[qs.selectedIndex].text.split(' —')[0]:'',dataEntrada:document.getElementById('reservaEntrada').value,dataSaida:document.getElementById('reservaSaida').value,numHospedes:document.getElementById('reservaNumHospedes').value,valorTotal:valorTotal,pagoEntrada:pagoEntrada,statusPagamento:statusPag,observacoes:document.getElementById('reservaObs').value,acompanhantes:getAcompanhantesForm()};
   if(!body.clienteId||!body.quartoId||!body.dataEntrada||!body.dataSaida){toast('Preencha todos os campos obrigatórios','error');return;}
   var action=id?'updateReserva':'addReserva';
   api(action,body).then(function(r){if(r.success){toast(id?'Reserva atualizada!':'Reserva confirmada! Entrada (50%) registrada.');closeModal('modalReserva');loadAll();}else{toast(r.error,'error');}});
 }
 
+function deleteReserva(id){
+  if(!confirm('Deletar esta reserva permanentemente? Esta ação não pode ser desfeita.'))return;
+  api('deleteReserva',{id:id}).then(function(r){if(r.success){toast('Reserva deletada!');loadAll();}else{toast(r.error,'error');}});
+}
 function cancelReserva(id){
   if(!confirm('Cancelar esta reserva?'))return;
   var r=state.reservas.filter(function(x){return x.ID===id;})[0];
