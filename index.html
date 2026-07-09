@@ -454,6 +454,25 @@ select.form-control { appearance: none; cursor: pointer; }
   </div>
 </div>
 
+
+<!-- MODAL CADASTRO RÁPIDO HÓSPEDE -->
+<div class="modal-overlay" id="modalCadastroRapido">
+  <div class="modal">
+    <div class="modal-header"><h2>Cadastrar novo hóspede</h2><button class="modal-close" onclick="closeModal('modalCadastroRapido')">&#215;</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="crItemId">
+      <div class="form-group"><label class="form-label">Nome completo</label><input type="text" class="form-control" id="crNome" placeholder="Nome do hóspede"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Telefone</label><input type="text" class="form-control" id="crTelefone" placeholder="(00) 00000-0000"></div>
+        <div class="form-group"><label class="form-label">E-mail</label><input type="email" class="form-control" id="crEmail" placeholder="email@exemplo.com"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalCadastroRapido')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarCadastroRapido()">Cadastrar e adicionar</button>
+    </div>
+  </div>
+</div>
 <script>
 var API = 'https://script.google.com/macros/s/AKfycbx89avklf3iUDghj-swNEdSxcDyH5T4Qz_UDzVYqTcKx3iDiyjJnl79NwkvbB0a6PHkYA/exec';
 var state = { quartos:[], clientes:[], reservas:[], financeiro:[], acompanhantes:[], calDate:new Date(), checkoutReservaId:null, editReservaId:null };
@@ -638,7 +657,6 @@ function buscaAcomp(input,itemId) {
   var res=document.getElementById('res_'+itemId);
   if(!val||val.length<2){res.style.display='none';return;}
   var encontrados=state.clientes.filter(function(c){return c.Nome&&c.Nome.toLowerCase().indexOf(val)>=0;});
-  if(!encontrados.length){res.style.display='none';return;}
   res.innerHTML='';
   encontrados.slice(0,6).forEach(function(c){
     var d=document.createElement('div');
@@ -654,7 +672,53 @@ function buscaAcomp(input,itemId) {
     };
     res.appendChild(d);
   });
+  // Se não encontrou: mostrar opção de cadastrar novo
+  if(!encontrados.length){
+    var d=document.createElement('div');
+    d.className='acomp-search-item';
+    d.style.color='var(--accent)';
+    d.style.fontWeight='500';
+    d.textContent='+ Cadastrar "'+input.value+'" como novo hóspede';
+    d.onclick=function(){
+      res.style.display='none';
+      abrirCadastroRapido(input.value, itemId);
+    };
+    res.appendChild(d);
+  }
   res.style.display='block';
+}
+
+function abrirCadastroRapido(nomeInicial, itemId) {
+  document.getElementById('crNome').value=nomeInicial||'';
+  document.getElementById('crTelefone').value='';
+  document.getElementById('crEmail').value='';
+  document.getElementById('crItemId').value=itemId;
+  document.getElementById('modalCadastroRapido').classList.add('open');
+}
+
+function salvarCadastroRapido() {
+  var nome=document.getElementById('crNome').value.trim();
+  var tel=document.getElementById('crTelefone').value.trim();
+  var email=document.getElementById('crEmail').value.trim();
+  var itemId=document.getElementById('crItemId').value;
+  if(!nome){toast('Preencha o nome','error');return;}
+  api('addCliente',{nome:nome,telefone:tel,email:email}).then(function(r){
+    if(r.success){
+      // Atualizar lista local e preencher o acompanhante
+      state.clientes.push({ID:r.id,Nome:nome,Telefone:tel,Email:email});
+      var item=document.getElementById(itemId);
+      if(item){
+        item.querySelector('.acomp-nome').value=nome;
+        item.querySelector('.acomp-tel').value=tel;
+        item.querySelector('.acomp-email').value=email;
+        item.querySelector('.acomp-busca').value=nome;
+      }
+      closeModal('modalCadastroRapido');
+      // Atualizar o select de hóspedes da reserva também
+      populateReservaSelects();
+      toast('Hóspede cadastrado e adicionado!');
+    }else{toast(r.error,'error');}
+  });
 }
 
 function toggleIdade(sel){
