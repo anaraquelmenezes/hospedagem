@@ -387,6 +387,8 @@ select.form-control { appearance: none; cursor: pointer; }
     <div class="modal-header"><h2 id="modalReservaTitle">Nova reserva</h2><button class="modal-close" onclick="closeModal('modalReserva')">&#215;</button></div>
     <div class="modal-body">
       <input type="hidden" id="reservaId">
+      <input type="hidden" id="reservaStatusReserva" value="Confirmada">
+      <input type="hidden" id="reservaPagoSaida" value="0">
       <div class="form-group"><label class="form-label">Hóspede principal</label><select class="form-control" id="reservaCliente"><option value="">Selecione o hóspede...</option></select></div>
       <div class="form-group"><label class="form-label">Quarto</label><select class="form-control" id="reservaQuarto" onchange="calcValor()"><option value="">Selecione o quarto...</option></select></div>
       <div class="form-row">
@@ -596,6 +598,8 @@ function openModal(type,data) {
     document.getElementById('reservaDiaria').dataset.editado='';
     document.getElementById('reservaObs').value=data?(data.Observacoes||''):'';
     document.getElementById('reservaResumo').style.display='none';
+    document.getElementById('reservaStatusReserva').value=data?(data.StatusReserva||'Confirmada'):'Confirmada';
+    document.getElementById('reservaPagoSaida').value=data?(data.PagoSaida||0):0;
     document.getElementById('modalReservaTitle').textContent=data?'Editar reserva':'Nova reserva';
     document.getElementById('modalReserva').classList.add('open');
     if(data){setTimeout(function(){document.getElementById('reservaCliente').value=data.ClienteID;document.getElementById('reservaQuarto').value=data.QuartoID;},50);}
@@ -854,7 +858,9 @@ function saveReserva(){
   var valorTotal=parseFloat(document.getElementById('reservaValor').value)||0;
   var pagoEntrada=parseFloat(document.getElementById('reservaEntradaValor').value)||valorTotal*0.5;
   var statusPag=pagoEntrada>0?(pagoEntrada>=valorTotal?'Pago':'Parcial'):'Pendente';
-  var body={id:id,clienteId:cs.value,clienteNome:cs.options[cs.selectedIndex]?cs.options[cs.selectedIndex].text:'',quartoId:qs.value,quartoNome:qs.options[qs.selectedIndex]?qs.options[qs.selectedIndex].text.split(' —')[0]:'',dataEntrada:document.getElementById('reservaEntrada').value,dataSaida:document.getElementById('reservaSaida').value,numHospedes:document.getElementById('reservaNumHospedes').value,valorTotal:valorTotal,pagoEntrada:pagoEntrada,statusPagamento:statusPag,observacoes:document.getElementById('reservaObs').value,acompanhantes:getAcompanhantesForm()};
+  var statusReserva=document.getElementById('reservaStatusReserva').value||'Confirmada';
+  var pagoSaida=parseFloat(document.getElementById('reservaPagoSaida').value)||0;
+  var body={id:id,clienteId:cs.value,clienteNome:cs.options[cs.selectedIndex]?cs.options[cs.selectedIndex].text:'',quartoId:qs.value,quartoNome:qs.options[qs.selectedIndex]?qs.options[qs.selectedIndex].text.split(' —')[0]:'',dataEntrada:document.getElementById('reservaEntrada').value,dataSaida:document.getElementById('reservaSaida').value,numHospedes:document.getElementById('reservaNumHospedes').value,valorTotal:valorTotal,pagoEntrada:pagoEntrada,pagoSaida:pagoSaida,statusPagamento:statusPag,statusReserva:statusReserva,observacoes:document.getElementById('reservaObs').value,acompanhantes:getAcompanhantesForm()};
   if(!body.clienteId||!body.quartoId||!body.dataEntrada||!body.dataSaida){toast('Preencha todos os campos obrigatórios','error');return;}
   // Verificar conflito de datas para o mesmo quarto
   var conflito=state.reservas.filter(function(r){
