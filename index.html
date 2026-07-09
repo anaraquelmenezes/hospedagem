@@ -922,7 +922,17 @@ function confirmCheckout(){
   var upd={id:r.ID,clienteId:r.ClienteID,clienteNome:r.ClienteNome,quartoId:r.QuartoID,quartoNome:r.QuartoNome,dataEntrada:r.DataEntrada,dataSaida:r.DataSaida,numHospedes:r.NumHospedes,valorTotal:r.ValorTotal,pagoEntrada:r.PagoEntrada,pagoSaida:restante,statusPagamento:'Pago',statusReserva:'Finalizada',observacoes:r.Observacoes||''};
   api('updateReserva',upd).then(function(res){
     if(res.success){
-      api('addFinanceiro',{data:new Date().toISOString(),tipo:'Receita',categoria:'Reserva - Saída',descricao:'Saída 50% - '+r.ClienteNome+' / '+r.QuartoNome,valor:restante,reservaId:r.ID}).then(function(){toast('Check-out realizado!');closeModal('modalCheckout');loadAll();});
+      api('addFinanceiro',{data:new Date().toISOString(),tipo:'Receita',categoria:'Reserva - Saída',descricao:'Saída 50% - '+r.ClienteNome+' / '+r.QuartoNome,valor:restante,reservaId:r.ID}).then(function(){toast('Check-out realizado!');closeModal('modalCheckout');loadAll();
+        // Abrir WhatsApp com mensagem de NPS
+        var telefone=(r.Telefone||'').replace(/\D/g,'');
+        if(!telefone){
+          // Buscar telefone do cliente cadastrado
+          var cli=state.clientes.filter(function(c){return c.ID===r.ClienteID;})[0];
+          if(cli)telefone=(cli.Telefone||'').replace(/\D/g,'');
+        }
+        var msg='Olá, '+r.ClienteNome+'! 😊\n\nFoi um prazer receber você na *Pousada Nossa Senhora Menina e São José Vitorioso*!\n\nSua opinião é muito importante para nós. Poderia dedicar 1 minutinho para responder?\n\n📋 *Pesquisa de satisfação:*\n👉 https://docs.google.com/forms/d/e/1FAIpQLScoTrUqtuspylG9xfz8o7P2GE3yEndQ_5y5rix2g3JYIGEcSw/viewform\n\n⭐ *Avaliação no Google:*\n👉 https://g.page/r/CQ3TCStmTU5TEAE/review\n\nEsperamos vê-lo novamente em breve! 🙏';
+        var waUrl='https://wa.me/55'+telefone+'?text='+encodeURIComponent(msg);
+        setTimeout(function(){window.open(waUrl,'_blank');},1000);});
     }else{toast(res.error,'error');}
   });
 }
