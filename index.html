@@ -198,9 +198,31 @@ select.form-control { appearance: none; cursor: pointer; }
   .metrics { grid-template-columns: repeat(2, 1fr); }
   .btn { padding: 8px 12px; font-size: 12px; }
 }
+.phone-wrap{display:flex;gap:6px;}
+.phone-wrap select.phone-ddi{flex:0 0 118px;width:118px;padding-left:6px;padding-right:2px;}
+.phone-wrap input.phone-num{flex:1;min-width:0;}
+.login-screen{position:fixed;inset:0;z-index:9999;background:#2d5a4e;display:flex;align-items:center;justify-content:center;padding:16px;}
+.login-box{background:#fff;border-radius:14px;padding:32px 28px;width:100%;max-width:360px;box-shadow:0 10px 40px rgba(0,0,0,.3);text-align:center;}
+.login-box h1{font-size:18px;margin-bottom:4px;color:#2d5a4e;}
+.login-box p{font-size:13px;color:#777;margin-bottom:20px;}
+.login-box .form-control{margin-bottom:12px;text-align:center;}
+.login-erro{color:#c0392b;font-size:13px;min-height:18px;margin-bottom:8px;}
+.login-lembrar{display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:#666;margin-bottom:14px;}
+.btn-sair{margin-top:10px;background:transparent;border:1px solid rgba(255,255,255,.3);color:rgba(255,255,255,.7);border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;width:100%;}
+.btn-sair:hover{background:rgba(255,255,255,.1);}
 </style>
 </head>
 <body>
+<div class="login-screen" id="loginScreen">
+  <form class="login-box" onsubmit="doLogin();return false;">
+    <h1>&#10022; Nossa Senhora Menina &amp; São José</h1>
+    <p>Sistema de Hospedagem &mdash; acesso restrito</p>
+    <input type="password" class="form-control" id="loginSenha" placeholder="Digite a senha de acesso" autocomplete="current-password">
+    <div class="login-erro" id="loginErro"></div>
+    <label class="login-lembrar"><input type="checkbox" id="loginLembrar" checked> Manter conectado neste aparelho</label>
+    <button type="submit" class="btn btn-primary" id="loginBtn" style="width:100%;">Entrar</button>
+  </form>
+</div>
 <div class="toast-container" id="toastContainer"></div>
 <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 
@@ -223,7 +245,7 @@ select.form-control { appearance: none; cursor: pointer; }
     <button class="nav-item" onclick="navigate(this,'clientes')"><span class="nav-icon">◎</span> Hóspedes</button>
     <button class="nav-item" onclick="navigate(this,'financeiro')"><span class="nav-icon">◇</span> Financeiro</button>
   </nav>
-  <div class="sidebar-footer">Pousada Nossa Senhora Menina<br>e São José Vitorioso</div>
+  <div class="sidebar-footer">Pousada Nossa Senhora Menina<br>e São José Vitorioso<br><button class="btn-sair" onclick="logout()">Sair</button></div>
 </aside>
 
 <main class="main">
@@ -370,7 +392,7 @@ select.form-control { appearance: none; cursor: pointer; }
       <input type="hidden" id="clienteId">
       <div class="form-group"><label class="form-label">Nome completo</label><input type="text" class="form-control" id="clienteNome" placeholder="Nome do hóspede"></div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Telefone</label><input type="text" class="form-control" id="clienteTelefone" placeholder="(00) 00000-0000"></div>
+        <div class="form-group"><label class="form-label">Telefone</label><div class="phone-wrap"><select class="form-control phone-ddi" id="clienteDDI" onchange="maskTel(this.parentNode.querySelector('.phone-num'))"></select><input type="text" class="form-control phone-num" id="clienteTelefone" placeholder="(00) 00000-0000" oninput="maskTel(this)"></div></div>
         <div class="form-group"><label class="form-label">E-mail</label><input type="email" class="form-control" id="clienteEmail" placeholder="email@exemplo.com"></div>
       </div>
     </div>
@@ -470,7 +492,7 @@ select.form-control { appearance: none; cursor: pointer; }
       <input type="hidden" id="crItemId">
       <div class="form-group"><label class="form-label">Nome completo</label><input type="text" class="form-control" id="crNome" placeholder="Nome do hóspede"></div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Telefone</label><input type="text" class="form-control" id="crTelefone" placeholder="(00) 00000-0000"></div>
+        <div class="form-group"><label class="form-label">Telefone</label><div class="phone-wrap"><select class="form-control phone-ddi" id="crDDI" onchange="maskTel(this.parentNode.querySelector('.phone-num'))"></select><input type="text" class="form-control phone-num" id="crTelefone" placeholder="(00) 00000-0000" oninput="maskTel(this)"></div></div>
         <div class="form-group"><label class="form-label">E-mail</label><input type="email" class="form-control" id="crEmail" placeholder="email@exemplo.com"></div>
       </div>
     </div>
@@ -508,12 +530,113 @@ function toast(msg,type) {
   setTimeout(function(){t.remove();},3200);
 }
 
+/* ===== TELEFONE INTERNACIONAL ===== */
+var DDIS=[['55','Brasil'],['1','EUA/Canadá'],['351','Portugal'],['54','Argentina'],['598','Uruguai'],['595','Paraguai'],['56','Chile'],['591','Bolívia'],['57','Colômbia'],['51','Peru'],['58','Venezuela'],['593','Equador'],['52','México'],['34','Espanha'],['33','França'],['39','Itália'],['49','Alemanha'],['44','Reino Unido'],['41','Suíça'],['31','Holanda'],['32','Bélgica'],['353','Irlanda'],['43','Áustria'],['46','Suécia'],['47','Noruega'],['45','Dinamarca'],['48','Polônia'],['7','Rússia'],['380','Ucrânia'],['30','Grécia'],['90','Turquia'],['972','Israel'],['971','Emirados Árabes'],['81','Japão'],['82','Coreia do Sul'],['86','China'],['91','Índia'],['61','Austrália'],['64','Nova Zelândia'],['27','África do Sul'],['244','Angola'],['258','Moçambique'],['238','Cabo Verde']];
+function ddiOptions(sel){
+  return DDIS.map(function(d){return '<option value="'+d[0]+'"'+(d[0]===String(sel||'55')?' selected':'')+'>'+d[1]+' +'+d[0]+'</option>';}).join('');
+}
+function maskTel(inp){
+  var wrap=inp.parentNode;
+  var ddi=wrap.querySelector('.phone-ddi').value;
+  if(ddi==='55'){
+    var d=inp.value.replace(/\D/g,'').slice(0,11);
+    var out=d;
+    if(d.length>10){out='('+d.slice(0,2)+') '+d.slice(2,7)+'-'+d.slice(7);}
+    else if(d.length>6){out='('+d.slice(0,2)+') '+d.slice(2,6)+'-'+d.slice(6);}
+    else if(d.length>2){out='('+d.slice(0,2)+') '+d.slice(2);}
+    else if(d.length>0){out='('+d;}
+    inp.value=out;
+    inp.placeholder='(00) 00000-0000';
+  }else{
+    inp.value=inp.value.replace(/[^\d\s\-()]/g,'');
+    inp.placeholder='Número com código de área';
+  }
+}
+function parsePhone(stored){
+  var s=String(stored==null?'':stored).trim();
+  if(!s)return {ddi:'55',num:''};
+  var m=s.match(/^\(?\+(\d+)\)?\s*(.*)$/);
+  if(m){
+    var rest=m[2];
+    var code=m[1];
+    if(!rest){ // sem espaço: tenta achar o DDI conhecido pelo prefixo
+      var best='';
+      DDIS.forEach(function(d){if(code.indexOf(d[0])===0&&d[0].length>best.length)best=d[0];});
+      if(best){return {ddi:best,num:code.slice(best.length)};}
+    }
+    return {ddi:code,num:rest};
+  }
+  return {ddi:'55',num:s};
+}
+function setPhoneTo(wrap,stored){
+  var p=parsePhone(stored);
+  var sel=wrap.querySelector('.phone-ddi');
+  var inp=wrap.querySelector('.phone-num');
+  var found=false;
+  for(var i=0;i<sel.options.length;i++){if(sel.options[i].value===p.ddi){found=true;break;}}
+  if(!found){var o=document.createElement('option');o.value=p.ddi;o.textContent='+'+p.ddi;sel.appendChild(o);}
+  sel.value=p.ddi;
+  inp.value=p.num;
+  maskTel(inp);
+}
+function getPhoneFrom(wrap){
+  var ddi=wrap.querySelector('.phone-ddi').value;
+  var num=wrap.querySelector('.phone-num').value.trim();
+  if(!num.replace(/\D/g,''))return '';
+  return '(+'+ddi+') '+num;
+}
+function waNumber(stored){
+  var p=parsePhone(stored);
+  var d=p.num.replace(/\D/g,'');
+  if(!d)return '';
+  return p.ddi+d;
+}
+
+/* ===== SENHA DE ACESSO ===== */
+var authPass='';
+var loggedIn=false;
+var SENHA_KEY='pousada_senha';
+function getSenhaSalva(){try{return sessionStorage.getItem(SENHA_KEY)||localStorage.getItem(SENHA_KEY)||'';}catch(e){return '';}}
+function limparSenhaSalva(){try{sessionStorage.removeItem(SENHA_KEY);localStorage.removeItem(SENHA_KEY);}catch(e){}}
+function salvarSenha(s,lembrar){try{limparSenhaSalva();(lembrar?localStorage:sessionStorage).setItem(SENHA_KEY,s);}catch(e){}}
+function mostrarLogin(msg){
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('loginErro').textContent=msg||'';
+  document.getElementById('loginBtn').disabled=false;
+  document.getElementById('loginBtn').textContent='Entrar';
+}
+function esconderLogin(){document.getElementById('loginScreen').style.display='none';}
+function doLogin(){
+  var s=document.getElementById('loginSenha').value;
+  if(!s){document.getElementById('loginErro').textContent='Digite a senha';return;}
+  var btn=document.getElementById('loginBtn');
+  btn.disabled=true;btn.textContent='Verificando...';
+  document.getElementById('loginErro').textContent='';
+  authPass=s;
+  api('login').then(function(r){
+    if(r&&r.success){
+      loggedIn=true;
+      salvarSenha(s,document.getElementById('loginLembrar').checked);
+      document.getElementById('loginSenha').value='';
+      esconderLogin();
+      initIfNeeded();
+    }else{
+      authPass='';
+      mostrarLogin('Senha incorreta');
+    }
+  }).catch(function(){authPass='';mostrarLogin('Erro de conexão. Tente novamente.');});
+}
+function logout(){
+  limparSenhaSalva();
+  location.reload();
+}
+
 function api(action,body) {
   return new Promise(function(resolve,reject) {
     var cb='cb_'+Date.now()+'_'+Math.floor(Math.random()*99999);
-    var url=API+'?action='+action+'&callback='+cb;
+    var url=API+'?action='+action+'&callback='+cb+'&senha='+encodeURIComponent(authPass);
     if(body){url+='&data='+encodeURIComponent(JSON.stringify(body));}
-    window[cb]=function(data){delete window[cb];if(script.parentNode)script.parentNode.removeChild(script);resolve(data);};
+    window[cb]=function(data){delete window[cb];if(script.parentNode)script.parentNode.removeChild(script);if(data&&data.authError&&loggedIn){limparSenhaSalva();alert('Sessão expirada ou senha alterada. Entre novamente.');location.reload();return;}resolve(data);};
     var script=document.createElement('script');
     script.src=url;
     script.onerror=function(){delete window[cb];if(script.parentNode)script.parentNode.removeChild(script);reject(new Error('Erro de conexão'));};
@@ -580,7 +703,7 @@ function openModal(type,data) {
   if(type==='cliente'){
     document.getElementById('clienteId').value=data?data.ID:'';
     document.getElementById('clienteNome').value=data?data.Nome:'';
-    document.getElementById('clienteTelefone').value=data?data.Telefone:'';
+    setPhoneTo(document.getElementById('clienteDDI').parentNode,data?data.Telefone:'');
     document.getElementById('clienteEmail').value=data?data.Email:'';
     document.getElementById('modalClienteTitle').textContent=data?'Editar hóspede':'Novo hóspede';
     document.getElementById('modalCliente').classList.add('open');
@@ -661,12 +784,13 @@ function addAcompanhante(dadosIniciais) {
     +'<div class="acomp-search-result" id="res_'+id+'" style="display:none;"></div>'
     +'</div></div>'
     +'<div class="form-row"><div class="form-group"><label class="form-label">Nome</label><input type="text" class="form-control acomp-nome" placeholder="Nome completo" value="'+(dadosIniciais?dadosIniciais.nome:'')+'"></div>'
-    +'<div class="form-group"><label class="form-label">Telefone</label><input type="text" class="form-control acomp-tel" placeholder="(00) 00000-0000" value="'+(dadosIniciais?dadosIniciais.telefone:'')+'"></div></div>'
+    +'<div class="form-group"><label class="form-label">Telefone</label><div class="phone-wrap"><select class="form-control phone-ddi acomp-ddi" onchange="maskTel(this.parentNode.querySelector(\'.phone-num\'))">'+ddiOptions('55')+'</select><input type="text" class="form-control phone-num acomp-tel" placeholder="(00) 00000-0000" oninput="maskTel(this)"></div></div></div>'
     +'<div class="form-row"><div class="form-group"><label class="form-label">E-mail</label><input type="email" class="form-control acomp-email" placeholder="email@exemplo.com" value="'+(dadosIniciais?dadosIniciais.email:'')+'"></div>'
     +'<div class="form-group"><label class="form-label">Ficará em</label><select class="form-control acomp-quarto"><option value="Mesmo quarto">Mesmo quarto</option><option value="Quarto separado">Quarto separado</option></select></div></div>'
     +'<div class="form-row"><div class="form-group"><label class="form-label">É criança?</label><select class="form-control acomp-crianca" onchange="toggleIdade(this)"><option value="Não">Não</option><option value="Sim">Sim</option></select></div>'
     +'<div class="form-group acomp-idade-group" style="display:none;"><label class="form-label">Idade</label><input type="number" class="form-control acomp-idade" placeholder="Ex: 8" min="0" max="17"></div></div>';
   document.getElementById('acompanhantesList').appendChild(div);
+  if(dadosIniciais&&dadosIniciais.telefone)setPhoneTo(div.querySelector('.phone-wrap'),dadosIniciais.telefone);
 }
 
 function buscaAcomp(input,itemId) {
@@ -682,7 +806,7 @@ function buscaAcomp(input,itemId) {
     d.onclick=function(){
       var item=document.getElementById(itemId);
       item.querySelector('.acomp-nome').value=c.Nome;
-      item.querySelector('.acomp-tel').value=c.Telefone||'';
+      setPhoneTo(item.querySelector('.phone-wrap'),c.Telefone||'');
       item.querySelector('.acomp-email').value=c.Email||'';
       input.value=c.Nome;
       res.style.display='none';
@@ -707,7 +831,7 @@ function buscaAcomp(input,itemId) {
 
 function abrirCadastroRapido(nomeInicial, itemId) {
   document.getElementById('crNome').value=nomeInicial||'';
-  document.getElementById('crTelefone').value='';
+  setPhoneTo(document.getElementById('crDDI').parentNode,'');
   document.getElementById('crEmail').value='';
   document.getElementById('crItemId').value=itemId;
   document.getElementById('modalCadastroRapido').classList.add('open');
@@ -715,7 +839,7 @@ function abrirCadastroRapido(nomeInicial, itemId) {
 
 function salvarCadastroRapido() {
   var nome=document.getElementById('crNome').value.trim();
-  var tel=document.getElementById('crTelefone').value.trim();
+  var tel=getPhoneFrom(document.getElementById('crDDI').parentNode);
   var email=document.getElementById('crEmail').value.trim();
   var itemId=document.getElementById('crItemId').value;
   if(!nome){toast('Preencha o nome','error');return;}
@@ -726,7 +850,7 @@ function salvarCadastroRapido() {
       var item=document.getElementById(itemId);
       if(item){
         item.querySelector('.acomp-nome').value=nome;
-        item.querySelector('.acomp-tel').value=tel;
+        setPhoneTo(item.querySelector('.phone-wrap'),tel);
         item.querySelector('.acomp-email').value=email;
         item.querySelector('.acomp-busca').value=nome;
       }
@@ -750,7 +874,7 @@ function getAcompanhantesForm() {
   items.forEach(function(item){
     var nome=item.querySelector('.acomp-nome').value.trim();
     if(!nome)return;
-    result.push({nome:nome,telefone:item.querySelector('.acomp-tel').value.trim(),email:item.querySelector('.acomp-email').value.trim(),quarto:item.querySelector('.acomp-quarto').value,crianca:item.querySelector('.acomp-crianca').value,idade:item.querySelector('.acomp-idade').value||''});
+    result.push({nome:nome,telefone:getPhoneFrom(item.querySelector('.phone-wrap')),email:item.querySelector('.acomp-email').value.trim(),quarto:item.querySelector('.acomp-quarto').value,crianca:item.querySelector('.acomp-crianca').value,idade:item.querySelector('.acomp-idade').value||''});
   });
   return result;
 }
@@ -807,7 +931,7 @@ function filterClientes(v){renderClientes(v);}
 function editCliente(c){openModal('cliente',c);}
 function saveCliente(){
   var id=document.getElementById('clienteId').value;
-  var body={id:id,nome:document.getElementById('clienteNome').value,telefone:document.getElementById('clienteTelefone').value,email:document.getElementById('clienteEmail').value};
+  var body={id:id,nome:document.getElementById('clienteNome').value,telefone:getPhoneFrom(document.getElementById('clienteDDI').parentNode),email:document.getElementById('clienteEmail').value};
   if(!body.nome){toast('Preencha o nome','error');return;}
   api(id?'updateCliente':'addCliente',body).then(function(r){if(r.success){toast(id?'Hóspede atualizado!':'Hóspede cadastrado!');closeModal('modalCliente');loadAll();}else{toast(r.error,'error');}});
 }
@@ -932,9 +1056,9 @@ function confirmCheckout(){
         // Fechar modal principal e abrir modal de NPS
         closeModal('modalCheckout');
         var cli=state.clientes.filter(function(c){return c.ID===clienteId;})[0];
-        var telefone=cli?String(cli.Telefone||'').replace(/\D/g,''):'';
+        var telefone=cli?waNumber(cli.Telefone):'';
         var msg='Ol\u00e1, '+nomeHospede+'! \ud83d\ude0a\n\nFoi um prazer receber voc\u00ea na *Pousada Nossa Senhora Menina e S\u00e3o Jos\u00e9 Vitorioso*!\n\nSua opini\u00e3o \u00e9 muito importante para n\u00f3s. Poderia dedicar 1 minutinho para responder?\n\n\ud83d\udccb *Pesquisa de satisfa\u00e7\u00e3o:*\n\ud83d\udc49 https://docs.google.com/forms/d/e/1FAIpQLScoTrUqtuspylG9xfz8o7P2GE3yEndQ_5y5rix2g3JYIGEcSw/viewform\n\n\u2b50 *Avalia\u00e7\u00e3o no Google:*\n\ud83d\udc49 https://g.page/r/CQ3TCStmTU5TEAE/review\n\nEsperamos v\u00ea-lo novamente em breve! \ud83d\ude4f';
-        var waUrl=telefone?'https://wa.me/55'+telefone+'?text='+encodeURIComponent(msg):'https://wa.me/?text='+encodeURIComponent(msg);
+        var waUrl=telefone?'https://wa.me/'+telefone+'?text='+encodeURIComponent(msg):'https://wa.me/?text='+encodeURIComponent(msg);
         document.getElementById('npsNome').textContent=nomeHospede;
         document.getElementById('npsLink').href=waUrl;
         document.getElementById('modalNPS').classList.add('open');
@@ -1026,7 +1150,16 @@ function deleteFinanceiro(id){
 }
 
 document.getElementById('topbarDate').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
-initIfNeeded();
+document.querySelectorAll('select.phone-ddi:empty').forEach(function(s){s.innerHTML=ddiOptions('55');});
+(function(){
+  var s=getSenhaSalva();
+  if(!s){mostrarLogin();return;}
+  authPass=s;
+  api('login').then(function(r){
+    if(r&&r.success){loggedIn=true;esconderLogin();initIfNeeded();}
+    else{authPass='';limparSenhaSalva();mostrarLogin('Entre novamente');}
+  }).catch(function(){authPass='';mostrarLogin('Erro de conexão. Tente novamente.');});
+})();
 </script>
 
 <!-- MODAL NPS WHATSAPP -->
